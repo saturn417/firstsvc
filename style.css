@@ -1,0 +1,208 @@
+/* =========================
+   기본 색상 변수
+========================= */
+:root {
+  --sea-dark: #1f4f5c;     /* 깊은 바다 */
+  --sea-light: #6fa3a1;    /* 연한 바다 */
+  --forest-dark: #3f5f4c;  /* 숲 */
+  --forest-light: #9fb8a8; /* 연한 숲 */
+
+  --bg-main: #f4f7f5;      /* 전체 배경 */
+  --card-bg: #ffffff;     /* 카드 배경 */
+
+  --text-main: #1f2d2b;
+  --text-sub: #5f6f6b;
+
+  --border-soft: #dbe4df;
+}
+
+/* =========================
+   전체 레이아웃
+========================= */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Noto Sans KR", system-ui, -apple-system, sans-serif;
+  background: linear-gradient(
+    180deg,
+    #e8f1ef 0%,
+    var(--bg-main) 100%
+  );
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 20px 64px;
+}
+
+/* =========================
+   제목
+========================= */
+h1 {
+  margin: 0 0 32px;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--sea-dark);
+  text-align: center;
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 1.2rem;
+  color: var(--forest-dark);
+}
+
+/* =========================
+   카드 공통
+========================= */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 28px 24px;
+  margin-bottom: 24px;
+}
+
+/* =========================
+   입력 필드
+========================= */
+.field {
+  margin-bottom: 18px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: var(--forest-dark);
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  font-size: 1rem;
+  background: #fbfdfc;
+  color: var(--text-main);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--sea-light);
+  background: #ffffff;
+}
+
+/* =========================
+   버튼
+========================= */
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+button {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 12px;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+/* 검색 버튼 */
+#searchBtn {
+  background: linear-gradient(
+    135deg,
+    var(--sea-dark),
+    var(--forest-dark)
+  );
+  color: #ffffff;
+}
+
+#searchBtn:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(
+    135deg,
+    var(--sea-dark),
+    var(--sea-light)
+  );
+}
+
+/* 초기화 버튼 */
+#resetBtn {
+  background: #eef3f1;
+  color: var(--text-sub);
+}
+
+#resetBtn:hover {
+  background: #e4ece8;
+}
+
+/* =========================
+   안내 문구
+========================= */
+.hint {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: var(--text-sub);
+}
+
+/* =========================
+   결과 영역
+========================= */
+#status {
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+  color: var(--sea-dark);
+}
+
+#result dl {
+  margin: 0;
+}
+
+#result div {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+#result div:last-child {
+  border-bottom: none;
+}
+
+dt {
+  font-weight: 600;
+  color: var(--forest-dark);
+}
+
+dd {
+  margin: 0;
+  color: var(--text-main);
+}
+
+/* =========================
+   비밀번호 재설정 버튼
+========================= */
+.next {
+  margin-top: 20px;
+}
+
+#resetPwBtn {
+  width: 100%;
+  background: var(--forest-light);
+  color: #ffffff;
+}
+
+#resetPwBtn:hover {
+  background: var(--forest-dark);
+}
