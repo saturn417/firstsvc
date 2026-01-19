@@ -1,29 +1,23 @@
 /* =========================
-   우리학교 구글 계정 안내 - Frontend JS
-   - 학번+이름 검색
-   - ID 표시(옵션: 마스킹)
-   - PW는 표시하지 않음 (재설정 안내 버튼 제공)
+   우리학교 구글 계정 안내 - Frontend JS (학년/반/번호/이름)
+   - students.json을 fetch로 로드
+   - 학/반/번 + 이름으로 계정 ID 조회
+   - 비밀번호는 표시/저장하지 않음
 ========================= */
 
-/**
- * (예시 데이터)
- * 실제 운영에서는 절대 프론트엔드 코드에 전체 계정 목록을 넣지 마세요.
- * → 서버(백엔드)에서 인증된 사용자에게만 조회되도록 처리해야 안전합니다.
- */
-const STUDENTS = [
-  // 예시
-  { studentNo: "10123", name: "홍길동", googleId: "honggildong@school.kr" },
-  { studentNo: "20501", name: "김민지", googleId: "minji.kim@school.kr" },
-];
+// students.json 경로
+const DATA_URL = "./students.json";
 
-// 옵션: ID 마스킹 사용 여부
+// 옵션: ID 마스킹 사용 여부 (원하시면 false로 전체 표시)
 const USE_ID_MASKING = false;
 
 const $ = (sel) => document.querySelector(sel);
 
 const form = $("#lookupForm");
-const studentNoInput = $("#studentNo");
-const studentNameInput = $("#studentName");
+const gradeInput = $("#grade");
+const klassInput = $("#klass");
+const numberInput = $("#number");
+const nameInput = $("#studentName");
 
 const statusEl = $("#status");
 const resultEl = $("#result");
@@ -31,6 +25,9 @@ const accountIdEl = $("#accountId");
 
 const resetBtn = $("#resetBtn");
 const resetPwBtn = $("#resetPwBtn");
+
+// 로드된 학생 데이터(키 기반 Map)
+let studentMap = new Map();
 
 /* =========================
    유틸
@@ -40,15 +37,17 @@ function normalize(str) {
 }
 
 function normalizeName(str) {
-  // 공백 제거 + 기본 정규화
   return normalize(str).replace(/\s+/g, "");
 }
 
+function makeKey(grade, klass, number) {
+  return `${normalize(grade)}-${normalize(klass)}-${normalize(number)}`;
+}
+
 function maskEmail(email) {
-  // 예: abcdef@school.kr -> abc***@school.kr
   const value = normalize(email);
   const at = value.indexOf("@");
-  if (at <= 1) return value; // 너무 짧으면 그대로
+  if (at <= 1) return value;
 
   const local = value.slice(0, at);
   const domain = value.slice(at);
@@ -59,10 +58,8 @@ function maskEmail(email) {
 }
 
 function setStatus(message, type = "info") {
-  // type: info | error | success
   statusEl.textContent = message;
 
-  // 간단한 스타일(원하면 CSS로 더 예쁘게 빼도 됨)
   statusEl.style.padding = message ? "10px 12px" : "0";
   statusEl.style.borderRadius = "10px";
   statusEl.style.border = message ? "1px solid #dbe4df" : "none";
@@ -78,23 +75,55 @@ function hideResult() {
 }
 
 /* =========================
-   핵심 로직: 조회
+   데이터 로드
 ========================= */
-function lookupAccount(studentNo, name) {
-  const no = normalize(studentNo);
+async function loadStudents() {
+  setStatus("데이터를 불러오는 중입니다...", "info");
+  hideResult();
+
+  try {
+    const res = await fetch(DATA_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`데이터 로드 실패: HTTP ${res.status}`);
+    const data = await res.json();
+
+    // Map 구성: 같은 학/반/번이 있을 수 없다는 전제(일반적으로 유일)
+    // 그래도 안전하게 배열로 저장 후 이름으로 최종 확인
+    const map = new Map();
+    for (const s of data) {
+      const key = makeKey(s.grade, s.class, s.number);
+      const arr = map.get(key) ?? [];
+      arr.push({
+        grade: normalize(s.grade),
+        class: normalize(s.class),
+        number: normalize(s.number),
+        name: normalizeName(s.name),
+        googleId: normalize(s.googleId),
+      });
+      map.set(key, arr);
+    }
+
+    studentMap = map;
+    setStatus("준비되었습니다. 학년/반/번호/이름을 입력해 주세요.", "success");
+  } catch (err) {
+    console.error(err);
+    setStatus("데이터를 불러오지 못했습니다. students.json 위치/이름을 확인해 주세요.", "error");
+  }
+}
+
+/* =========================
+   조회 로직
+========================= */
+function lookupAccount(grade, klass, number, name) {
+  const key = makeKey(grade, klass, number);
+  const candidates = studentMap.get(key);
+  if (!candidates || candidates.length === 0) return null;
+
   const nm = normalizeName(name);
-
-  if (!no || !nm) return null;
-
-  return (
-    STUDENTS.find(
-      (s) => normalize(s.studentNo) === no && normalizeName(s.name) === nm
-    ) || null
-  );
+  return candidates.find((c) => c.name === nm) || null;
 }
 
 function showResult(student) {
-  const id = normalize(student.googleId);
+  const id = student.googleId;
   accountIdEl.textContent = USE_ID_MASKING ? maskEmail(id) : id;
 
   resultEl.hidden = false;
@@ -102,26 +131,27 @@ function showResult(student) {
 }
 
 /* =========================
-   이벤트 바인딩
+   이벤트
 ========================= */
 form.addEventListener("submit", (e) => {
   e.preventDefault();
 
   hideResult();
 
-  const studentNo = studentNoInput.value;
-  const studentName = studentNameInput.value;
+  const grade = gradeInput.value;
+  const klass = klassInput.value;
+  const number = numberInput.value;
+  const name = nameInput.value;
 
-  // 입력 검증
-  if (!normalize(studentNo) || !normalize(studentName)) {
-    setStatus("학번과 이름을 모두 입력해 주세요.", "error");
+  if (!normalize(grade) || !normalize(klass) || !normalize(number) || !normalize(name)) {
+    setStatus("학년/반/번호/이름을 모두 입력해 주세요.", "error");
     return;
   }
 
-  // 검색
-  const found = lookupAccount(studentNo, studentName);
+  const found = lookupAccount(grade, klass, number, name);
+
   if (!found) {
-    setStatus("일치하는 정보를 찾지 못했습니다. 학번/이름을 다시 확인해 주세요.", "error");
+    setStatus("일치하는 정보를 찾지 못했습니다. 학년/반/번호/이름을 다시 확인해 주세요.", "error");
     return;
   }
 
@@ -129,26 +159,23 @@ form.addEventListener("submit", (e) => {
 });
 
 resetBtn.addEventListener("click", () => {
-  studentNoInput.value = "";
-  studentNameInput.value = "";
+  gradeInput.value = "";
+  klassInput.value = "";
+  numberInput.value = "";
+  nameInput.value = "";
   hideResult();
   setStatus("");
-  studentNoInput.focus();
+  gradeInput.focus();
 });
 
 resetPwBtn?.addEventListener("click", () => {
-  // 실제 학교 정책에 맞게 수정:
-  // - 구글 비밀번호 재설정 안내 페이지로 이동
-  // - 또는 '담임/관리자 문의' 안내
-  //
-  // 예시: 안내 문구만 띄우기
   alert(
     "비밀번호는 보안을 위해 화면에 표시하지 않습니다.\n\n" +
-      "1) 학교 계정 관리자에게 임시 비밀번호 발급을 요청하거나\n" +
-      "2) 안내된 비밀번호 재설정 절차를 진행해 주세요."
+      "학교 계정 관리자에게 임시 비밀번호 발급을 요청하거나\n" +
+      "안내된 비밀번호 재설정 절차를 진행해 주세요."
   );
 });
 
-/* 초기 상태 */
+// 초기 실행
 hideResult();
-setStatus("");
+loadStudents();
