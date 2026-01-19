@@ -15,27 +15,31 @@
     <section class="card" aria-label="검색 영역">
       <form id="lookupForm" autocomplete="off">
         
-        <div class="field">
-          <label for="grade">학년</label>
-          <select id="grade" name="grade" required>
-            <option value="" selected disabled>학년 선택</option>
-          </select>
+        <div class="row">
+          <div class="field">
+            <label for="grade">학년</label>
+            <select id="grade" name="grade" required>
+              <option value="" selected disabled>학년 선택</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="klass">반</label>
+            <select id="klass" name="klass" required disabled>
+              <option value="" selected disabled>반 선택</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="number">번호</label>
+            <select id="number" name="number" required disabled>
+              <option value="" selected disabled>번호 선택</option>
+            </select>
+          </div>
         </div>
 
-
-        <div class="field">
-          <label for="klass">반</label>
-          <select id="klass" name="klass" required disabled>
-            <option value="" selected disabled>반 선택</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="number">번호</label>
-          <select id="number" name="number" required disabled>
-            <option value="" selected disabled>번호 선택</option>
-          </select>
-        </div>
+       
+       
         
         <div class="field">
           <label for="studentName">이름</label>
