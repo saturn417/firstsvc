@@ -181,7 +181,6 @@ numberSelect.addEventListener("change", () => {
  
 });
 
-// 검색 버튼
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   hideResult();
@@ -189,11 +188,6 @@ form.addEventListener("submit", (e) => {
   const grade = gradeSelect.value;
   const klass = klassSelect.value;
   const number = numberSelect.value;
-  const inputName = normalizeName(nameInput.value);
-  if (!student || student.name !== inputName) {
-    setStatus("학년·반·번호·이름이 일치하지 않습니다.", "error");
-    return;
-  }
 
   if (!grade || !klass || !number) {
     setStatus("학년/반/번호를 모두 선택해 주세요.", "error");
@@ -202,10 +196,20 @@ form.addEventListener("submit", (e) => {
 
   const key = makeKey(grade, klass, number);
   const student = studentByKey.get(key);
-  
 
   if (!student) {
     setStatus("일치하는 정보를 찾지 못했습니다. 선택 값을 다시 확인해 주세요.", "error");
+    return;
+  }
+
+  const inputName = normalizeName(nameInput.value);
+  if (!inputName) {
+    setStatus("이름을 입력해 주세요.", "error");
+    return;
+  }
+
+  if (student.name !== inputName) {
+    setStatus("학년·반·번호·이름이 일치하지 않습니다.", "error");
     return;
   }
 
