@@ -202,6 +202,7 @@ form.addEventListener("submit", (e) => {
 
   const key = makeKey(grade, klass, number);
   const student = studentByKey.get(key);
+  
 
   if (!student) {
     setStatus("일치하는 정보를 찾지 못했습니다. 선택 값을 다시 확인해 주세요.", "error");
