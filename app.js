@@ -136,7 +136,7 @@ async function loadStudents() {
     // 반/번호 초기 비활성화
     disableSelect(klassSelect, "반 선택");
     disableSelect(numberSelect, "번호 선택");
-    nameInput.value = "";
+  
 
     setStatus("준비되었습니다. 학년/반/번호를 선택해 주세요.", "success");
   } catch (e) {
@@ -148,8 +148,7 @@ async function loadStudents() {
 // 학년 선택 → 반 갱신
 gradeSelect.addEventListener("change", () => {
   hideResult();
-  nameInput.value = "";
-
+  
   const grade = gradeSelect.value;
   const classes = Array.from(classesByGrade.get(grade) ?? []).sort((a, b) => Number(a) - Number(b));
 
@@ -162,8 +161,7 @@ gradeSelect.addEventListener("change", () => {
 // 반 선택 → 번호 갱신
 klassSelect.addEventListener("change", () => {
   hideResult();
-  nameInput.value = "";
-
+ 
   const grade = gradeSelect.value;
   const klass = klassSelect.value;
   const gc = `${grade}|${klass}`;
@@ -180,7 +178,7 @@ numberSelect.addEventListener("change", () => {
   const key = makeKey(gradeSelect.value, klassSelect.value, numberSelect.value);
   const student = studentByKey.get(key);
 
-  nameInput.value = student ? student.name : "";
+ 
 });
 
 // 검색 버튼
@@ -191,6 +189,11 @@ form.addEventListener("submit", (e) => {
   const grade = gradeSelect.value;
   const klass = klassSelect.value;
   const number = numberSelect.value;
+  const inputName = normalizeName(nameInput.value);
+  if (!student || student.name !== inputName) {
+    setStatus("학년·반·번호·이름이 일치하지 않습니다.", "error");
+    return;
+  }
 
   if (!grade || !klass || !number) {
     setStatus("학년/반/번호를 모두 선택해 주세요.", "error");
@@ -219,7 +222,7 @@ resetBtn.addEventListener("click", () => {
   gradeSelect.value = "";
   disableSelect(klassSelect, "반 선택");
   disableSelect(numberSelect, "번호 선택");
-  nameInput.value = "";
+  
 });
 
 // 재설정 안내
