@@ -14,24 +14,32 @@
 
     <section class="card" aria-label="검색 영역">
       <form id="lookupForm" autocomplete="off">
+        
         <div class="field">
           <label for="grade">학년</label>
-          <input id="grade" name="grade" type="text" inputmode="numeric" placeholder="예: 1" required />
+          <select id="grade" name="grade" required>
+            <option value="" selected disabled>학년 선택</option>
+          </select>
         </div>
+
 
         <div class="field">
           <label for="klass">반</label>
-          <input id="klass" name="klass" type="text" inputmode="numeric" placeholder="예: 7" required />
+          <select id="klass" name="klass" required disabled>
+            <option value="" selected disabled>반 선택</option>
+          </select>
         </div>
 
         <div class="field">
           <label for="number">번호</label>
-          <input id="number" name="number" type="text" inputmode="numeric" placeholder="예: 15" required />
+          <select id="number" name="number" required disabled>
+            <option value="" selected disabled>번호 선택</option>
+          </select>
         </div>
-
+        
         <div class="field">
           <label for="studentName">이름</label>
-          <input id="studentName" name="studentName" type="text" placeholder="예: 홍길동" required />
+          <input id="studentName" name="studentName" type="text" readonly placeholder="번호 선택 시 자동 표시" />
         </div>
 
         <div class="actions">

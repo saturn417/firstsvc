@@ -1,22 +1,20 @@
 /* =========================
-   우리학교 구글 계정 안내 - Frontend JS (학년/반/번호/이름)
+   우리학교 구글 계정 안내 - Frontend JS (드롭다운: 학년/반/번호)
    - students.json을 fetch로 로드
-   - 학/반/번 + 이름으로 계정 ID 조회
+   - 학년→반→번호 연동 드롭다운
+   - 번호 선택 시 이름 자동 표시
    - 비밀번호는 표시/저장하지 않음
 ========================= */
 
-// students.json 경로
 const DATA_URL = "./students.json";
-
-// 옵션: ID 마스킹 사용 여부 (원하시면 false로 전체 표시)
 const USE_ID_MASKING = false;
 
 const $ = (sel) => document.querySelector(sel);
 
 const form = $("#lookupForm");
-const gradeInput = $("#grade");
-const klassInput = $("#klass");
-const numberInput = $("#number");
+const gradeSelect = $("#grade");
+const klassSelect = $("#klass");
+const numberSelect = $("#number");
 const nameInput = $("#studentName");
 
 const statusEl = $("#status");
@@ -26,37 +24,32 @@ const accountIdEl = $("#accountId");
 const resetBtn = $("#resetBtn");
 const resetPwBtn = $("#resetPwBtn");
 
-// 로드된 학생 데이터(키 기반 Map)
-let studentMap = new Map();
+// key: "grade-class-number" -> student {grade,class,number,name,googleId}
+let studentByKey = new Map();
 
-/* =========================
-   유틸
-========================= */
+// 인덱스: grade -> Set(classes), grade|class -> Set(numbers)
+let classesByGrade = new Map();
+let numbersByGradeClass = new Map();
+
 function normalize(str) {
   return String(str ?? "").trim();
 }
-
 function normalizeName(str) {
   return normalize(str).replace(/\s+/g, "");
 }
-
 function makeKey(grade, klass, number) {
   return `${normalize(grade)}-${normalize(klass)}-${normalize(number)}`;
 }
-
 function maskEmail(email) {
   const value = normalize(email);
   const at = value.indexOf("@");
   if (at <= 1) return value;
-
   const local = value.slice(0, at);
   const domain = value.slice(at);
-
   const keep = Math.min(3, local.length);
   const masked = local.slice(0, keep) + "*".repeat(Math.max(3, local.length - keep));
   return masked + domain;
 }
-
 function setStatus(message, type = "info") {
   statusEl.textContent = message;
 
@@ -66,116 +59,178 @@ function setStatus(message, type = "info") {
   statusEl.style.background =
     type === "error" ? "#fff3f3" : type === "success" ? "#f2fbf6" : "#f5fbfb";
   statusEl.style.color =
-    type === "error" ? "#7a2d2d" : type === "success" ? "#1f4f5c" : "#1f4f5c";
+    type === "error" ? "#7a2d2d" : "#1f4f5c";
 }
-
 function hideResult() {
   resultEl.hidden = true;
   accountIdEl.textContent = "-";
 }
 
-/* =========================
-   데이터 로드
-========================= */
+function setSelectOptions(selectEl, options, placeholder) {
+  selectEl.innerHTML = "";
+  const ph = document.createElement("option");
+  ph.value = "";
+  ph.disabled = true;
+  ph.selected = true;
+  ph.textContent = placeholder;
+  selectEl.appendChild(ph);
+
+  for (const opt of options) {
+    const o = document.createElement("option");
+    o.value = opt;
+    o.textContent = opt;
+    selectEl.appendChild(o);
+  }
+}
+
+function disableSelect(selectEl, placeholder) {
+  selectEl.disabled = true;
+  setSelectOptions(selectEl, [], placeholder);
+}
+
+function enableSelect(selectEl) {
+  selectEl.disabled = false;
+}
+
 async function loadStudents() {
   setStatus("데이터를 불러오는 중입니다...", "info");
   hideResult();
 
   try {
     const res = await fetch(DATA_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`데이터 로드 실패: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    // Map 구성: 같은 학/반/번이 있을 수 없다는 전제(일반적으로 유일)
-    // 그래도 안전하게 배열로 저장 후 이름으로 최종 확인
-    const map = new Map();
+    // 초기화
+    studentByKey = new Map();
+    classesByGrade = new Map();
+    numbersByGradeClass = new Map();
+
     for (const s of data) {
-      const key = makeKey(s.grade, s.class, s.number);
-      const arr = map.get(key) ?? [];
-      arr.push({
-        grade: normalize(s.grade),
-        class: normalize(s.class),
-        number: normalize(s.number),
-        name: normalizeName(s.name),
-        googleId: normalize(s.googleId),
-      });
-      map.set(key, arr);
+      const grade = normalize(s.grade);
+      const klass = normalize(s.class);
+      const number = normalize(s.number);
+      const name = normalizeName(s.name);
+      const googleId = normalize(s.googleId);
+
+      const key = makeKey(grade, klass, number);
+
+      // 같은 학/반/번 중복이 없다면 그대로 저장
+      studentByKey.set(key, { grade, klass, number, name, googleId });
+
+      // grade -> classes
+      if (!classesByGrade.has(grade)) classesByGrade.set(grade, new Set());
+      classesByGrade.get(grade).add(klass);
+
+      // grade|class -> numbers
+      const gc = `${grade}|${klass}`;
+      if (!numbersByGradeClass.has(gc)) numbersByGradeClass.set(gc, new Set());
+      numbersByGradeClass.get(gc).add(number);
     }
 
-    studentMap = map;
-    setStatus("준비되었습니다. 학년/반/번호/이름을 입력해 주세요.", "success");
-  } catch (err) {
-    console.error(err);
+    // 드롭다운 채우기: 학년
+    const grades = Array.from(classesByGrade.keys()).sort((a, b) => Number(a) - Number(b));
+    setSelectOptions(gradeSelect, grades, "학년 선택");
+    enableSelect(gradeSelect);
+
+    // 반/번호 초기 비활성화
+    disableSelect(klassSelect, "반 선택");
+    disableSelect(numberSelect, "번호 선택");
+    nameInput.value = "";
+
+    setStatus("준비되었습니다. 학년/반/번호를 선택해 주세요.", "success");
+  } catch (e) {
+    console.error(e);
     setStatus("데이터를 불러오지 못했습니다. students.json 위치/이름을 확인해 주세요.", "error");
   }
 }
 
-/* =========================
-   조회 로직
-========================= */
-function lookupAccount(grade, klass, number, name) {
-  const key = makeKey(grade, klass, number);
-  const candidates = studentMap.get(key);
-  if (!candidates || candidates.length === 0) return null;
+// 학년 선택 → 반 갱신
+gradeSelect.addEventListener("change", () => {
+  hideResult();
+  nameInput.value = "";
 
-  const nm = normalizeName(name);
-  return candidates.find((c) => c.name === nm) || null;
-}
+  const grade = gradeSelect.value;
+  const classes = Array.from(classesByGrade.get(grade) ?? []).sort((a, b) => Number(a) - Number(b));
 
-function showResult(student) {
-  const id = student.googleId;
-  accountIdEl.textContent = USE_ID_MASKING ? maskEmail(id) : id;
+  setSelectOptions(klassSelect, classes, "반 선택");
+  enableSelect(klassSelect);
 
-  resultEl.hidden = false;
-  setStatus("계정을 찾았습니다. 비밀번호는 재설정 절차로 안내합니다.", "success");
-}
+  disableSelect(numberSelect, "번호 선택");
+});
 
-/* =========================
-   이벤트
-========================= */
+// 반 선택 → 번호 갱신
+klassSelect.addEventListener("change", () => {
+  hideResult();
+  nameInput.value = "";
+
+  const grade = gradeSelect.value;
+  const klass = klassSelect.value;
+  const gc = `${grade}|${klass}`;
+
+  const numbers = Array.from(numbersByGradeClass.get(gc) ?? []).sort((a, b) => Number(a) - Number(b));
+  setSelectOptions(numberSelect, numbers, "번호 선택");
+  enableSelect(numberSelect);
+});
+
+// 번호 선택 → 이름 자동 표시
+numberSelect.addEventListener("change", () => {
+  hideResult();
+
+  const key = makeKey(gradeSelect.value, klassSelect.value, numberSelect.value);
+  const student = studentByKey.get(key);
+
+  nameInput.value = student ? student.name : "";
+});
+
+// 검색 버튼
 form.addEventListener("submit", (e) => {
   e.preventDefault();
-
   hideResult();
 
-  const grade = gradeInput.value;
-  const klass = klassInput.value;
-  const number = numberInput.value;
-  const name = nameInput.value;
+  const grade = gradeSelect.value;
+  const klass = klassSelect.value;
+  const number = numberSelect.value;
 
-  if (!normalize(grade) || !normalize(klass) || !normalize(number) || !normalize(name)) {
-    setStatus("학년/반/번호/이름을 모두 입력해 주세요.", "error");
+  if (!grade || !klass || !number) {
+    setStatus("학년/반/번호를 모두 선택해 주세요.", "error");
     return;
   }
 
-  const found = lookupAccount(grade, klass, number, name);
+  const key = makeKey(grade, klass, number);
+  const student = studentByKey.get(key);
 
-  if (!found) {
-    setStatus("일치하는 정보를 찾지 못했습니다. 학년/반/번호/이름을 다시 확인해 주세요.", "error");
+  if (!student) {
+    setStatus("일치하는 정보를 찾지 못했습니다. 선택 값을 다시 확인해 주세요.", "error");
     return;
   }
 
-  showResult(found);
+  // ID 표시
+  accountIdEl.textContent = USE_ID_MASKING ? maskEmail(student.googleId) : student.googleId;
+  resultEl.hidden = false;
+  setStatus("계정을 찾았습니다. 비밀번호는 재설정 절차로 안내합니다.", "success");
 });
 
+// 초기화
 resetBtn.addEventListener("click", () => {
-  gradeInput.value = "";
-  klassInput.value = "";
-  numberInput.value = "";
-  nameInput.value = "";
   hideResult();
   setStatus("");
-  gradeInput.focus();
+
+  gradeSelect.value = "";
+  disableSelect(klassSelect, "반 선택");
+  disableSelect(numberSelect, "번호 선택");
+  nameInput.value = "";
 });
 
+// 재설정 안내
 resetPwBtn?.addEventListener("click", () => {
   alert(
     "비밀번호는 보안을 위해 화면에 표시하지 않습니다.\n\n" +
-      "학교 계정 관리자에게 임시 비밀번호 발급을 요청하거나\n" +
-      "안내된 비밀번호 재설정 절차를 진행해 주세요."
+    "학교 계정 관리자에게 임시 비밀번호 발급을 요청하거나\n" +
+    "안내된 비밀번호 재설정 절차를 진행해 주세요."
   );
 });
 
-// 초기 실행
+// 시작
 hideResult();
 loadStudents();
